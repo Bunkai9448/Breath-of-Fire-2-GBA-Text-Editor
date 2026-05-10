@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using System.Text.Encodings.Web;
 
 internal static class Program
 {
@@ -243,7 +244,11 @@ internal static class Program
 		if (string.Equals(Path.GetExtension(path), ".json", StringComparison.OrdinalIgnoreCase))
 		{
 			var items = entries.Select(e => new JsonScriptItem { address = e.PointerAddress.ToString("X6", CultureInfo.InvariantCulture), dialog = e.Text }).ToList();
-			JsonSerializerOptions options = new JsonSerializerOptions { WriteIndented = true };
+			JsonSerializerOptions options = new JsonSerializerOptions 
+			{ 
+				WriteIndented = true,
+				Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+			};
 			File.WriteAllText(path, JsonSerializer.Serialize(items, options), new UTF8Encoding(false));
 			return;
 		}
@@ -304,7 +309,11 @@ internal static class Program
 			});
 		}
 
-		JsonSerializerOptions options = new JsonSerializerOptions { WriteIndented = true };
+		JsonSerializerOptions options = new JsonSerializerOptions 
+		{ 
+			WriteIndented = true,
+			Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+		};
 		File.WriteAllText(path, JsonSerializer.Serialize(metadata, options), new UTF8Encoding(false));
 	}
 
