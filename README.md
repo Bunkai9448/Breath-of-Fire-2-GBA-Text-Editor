@@ -1,2 +1,7 @@
 # Breath-of-Fire-2-GBA-Text-Editor
 Editor de Texto para Breath of Fire 2 de GBA.
+
+extraer  
+BoF2Manager extract Breathesp.gba text.json bof2.gba.tbl  
+parchar  
+BoF2Manager insert Breathesp.gba text.json breathpatced.gba bof2.gba.tbl  
