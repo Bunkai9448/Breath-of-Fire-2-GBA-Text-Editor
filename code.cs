@@ -381,6 +381,21 @@ internal static class Program
 			}
 		}
 
+		// Cálculo de estadísticas de espacio
+		int originalSpace = (int)(PointerTableStart - ScriptStart);
+		int usedOriginal = cursor - (int)ScriptStart;
+		int remainingOriginal = (int)PointerTableStart - cursor;
+		double percentUsed = (usedOriginal / (double)originalSpace) * 100.0;
+
+		Console.WriteLine("--------------------------------------------------");
+		Console.WriteLine($"Estadísticas de espacio (Bloque Original):");
+		Console.WriteLine($"  Usado:     {usedOriginal} / {originalSpace} bytes ({percentUsed:F2}%)");
+		if (remainingOriginal >= 0)
+			Console.WriteLine($"  Restante:  {remainingOriginal} bytes libres.");
+		else
+			Console.WriteLine($"  AVISO: El texto excedió el bloque original y se expandió al final de la ROM.");
+		Console.WriteLine("--------------------------------------------------");
+
 		for (int i = 0; i < entries.Count; i++)
 		{
 			uint stringAddress = entries[i].StringAddress;
@@ -411,8 +426,13 @@ internal static class Program
 			return;
 		}
 
-		// Atlas no duplica el tamaño del ROM; expande solo lo necesario.
-		int newLength = minLength; 
+		// Límite máximo físico de una ROM de GBA (32MB)
+		if (minLength > 32 * 1024 * 1024)
+		{
+			throw new InvalidOperationException($"Error crítico: La ROM resultante ({minLength} bytes) excede el límite de 32MB de GBA.");
+		}
+
+		int newLength = minLength;
 		Array.Resize(ref buffer, newLength);
 	}
 
@@ -549,6 +569,26 @@ internal static class Program
 			return true;
 		}
 
+		// Soporte para comandos con parámetros: [COLOR:05] -> Busca "[COLOR]" en tabla y añade "05" como byte literal
+		if (token.Contains(':'))
+		{
+			int colonIndex = token.IndexOf(':');
+			string prefix = token.Substring(0, 1); // '[' o '<'
+			string suffix = token.Substring(token.Length - 1, 1); // ']' o '>'
+			string cmdName = token.Substring(1, colonIndex - 1);
+			string valPart = token.Substring(colonIndex + 1, token.Length - colonIndex - 2);
+
+			string lookupToken = prefix + cmdName + suffix;
+
+			if (TokenToBytes.TryGetValue(lookupToken, out byte[] cmdBytes))
+			{
+				output.AddRange(cmdBytes);
+				// Convertimos el parámetro hex (ej: "01" o "0102") a bytes
+				output.AddRange(HexToBytes(valPart));
+				return true;
+			}
+		}
+
 		if (TokenToBytes.TryGetValue(token, out byte[] bytes))
 		{
 			output.AddRange(bytes);
@@ -567,6 +607,24 @@ internal static class Program
 		}
 
 		return false;
+	}
+
+	private static byte[] HexToBytes(string hex)
+	{
+		if (string.IsNullOrEmpty(hex)) return Array.Empty<byte>();
+		
+		// Limpieza básica por si hay espacios
+		hex = hex.Replace(" ", "");
+
+		if (hex.Length % 2 != 0 || !hex.All(IsHexDigit))
+			throw new InvalidDataException($"El parámetro hexadecimal '[...:{hex}]' no es válido. Debe ser un número par de caracteres (0-9, A-F).");
+
+		byte[] bytes = new byte[hex.Length / 2];
+		for (int i = 0; i < bytes.Length; i++)
+		{
+			bytes[i] = byte.Parse(hex.Substring(i * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+		}
+		return bytes;
 	}
 
 	private static bool TryEncodeLiteral(char value, List<byte> output)
