@@ -138,6 +138,7 @@ internal static class Program
 
 			if (entry.StringAddress != 0)
 			{
+				entry.ByteLength = GetRawDialogByteLength(rom, entry.StringAddress);
 				entry.Lines.Add(DecodeRomText(rom, entry.StringAddress));
 			}
 
@@ -243,7 +244,13 @@ internal static class Program
 
 		if (string.Equals(Path.GetExtension(path), ".json", StringComparison.OrdinalIgnoreCase))
 		{
-			var items = entries.Select(e => new JsonScriptItem { address = e.PointerAddress.ToString("X6", CultureInfo.InvariantCulture), dialog = e.Text }).ToList();
+			var items = entries.Select(e => new JsonScriptItem
+			{
+				address = e.PointerAddress.ToString("X6", CultureInfo.InvariantCulture),
+				dialog = e.Text,
+				byteLength = e.ByteLength,
+				strLength = e.Text.Length
+			}).ToList();
 			JsonSerializerOptions options = new JsonSerializerOptions 
 			{ 
 				WriteIndented = true,
@@ -498,6 +505,23 @@ internal static class Program
 		}
 
 		return builder.ToString();
+	}
+
+	private static int GetRawDialogByteLength(byte[] rom, uint stringAddress)
+	{
+		int offset = checked((int)stringAddress);
+		if (offset < 0 || offset >= rom.Length)
+		{
+			return 0;
+		}
+
+		int start = offset;
+		while (offset < rom.Length && rom[offset] != 0x00)
+		{
+			offset++;
+		}
+
+		return offset - start;
 	}
 
 	private static string FormatDecodedToken(TokenDefinition token)
@@ -827,6 +851,8 @@ internal static class Program
 
 		public uint StringAddress { get; set; }
 
+		public int ByteLength { get; set; }
+
 		public List<string> Lines { get; } = new List<string>();
 
 		public string Text
@@ -866,5 +892,7 @@ internal static class Program
 	{
 		public string address { get; set; }
 		public string dialog { get; set; }
+		public int byteLength { get; set; }
+		public int strLength { get; set; }
 	}
 }

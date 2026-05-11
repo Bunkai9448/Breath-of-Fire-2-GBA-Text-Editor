@@ -1,0 +1,1 @@
+dotnet build .\code.csproj -c Release
